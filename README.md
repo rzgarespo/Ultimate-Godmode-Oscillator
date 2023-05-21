@@ -16,7 +16,7 @@ The Godmode indicator is a powerful tool for analyzing price action and identify
 
 - Blue LSMA: A Blue LSMA plot above the 50 level indicates a bullish sentiment. It signifies that the underlying Simple Moving Average (SMA) (20MA) is moving upward, which can result in the expansion of the B-Bands.
 
-- Green Line: If the Green Line runs up to the 50 level, it indicates an increase in buying pressure and a potential upward move towards the Yellow B-Band Basis.
+- Green Line: If the Green Line runs up to the 50 level, it indicates an increase in buying pressure and a potential upward move towards the B-Band Basis (20MA).
 
 - White Energy: The White Energy, represented by the Gray "cloud," provides an indication of the strength of price moves. A downward movement of the White Energy, while the Red and Blue lines are above the 50 level, suggests a potential slowdown in the upward move.
 
@@ -25,7 +25,7 @@ The Godmode indicator is a powerful tool for analyzing price action and identify
 
 - Blue LSMA: A Blue LSMA plot below the 50 level indicates a bearish sentiment. It suggests that the underlying SMA is moving downward, which can result in the expansion of the B-Bands.
 
-- Green Line: If the Green Line falls down to the 50 level, it indicates a decrease in buying pressure and a potential downward move towards the Yellow B-Band Basis.
+- Green Line: If the Green Line falls down to the 50 level, it indicates a decrease in buying pressure and a potential downward move towards the B-Band Basis (20MA).
 
 - White Energy: The White Energy, represented by the Gray "cloud," provides an indication of the strength of price moves. A downward movement of the White Energy, while the Red and Blue lines are below the 50 level, suggests a potential slowdown in the downward move.
 
@@ -33,7 +33,9 @@ The Godmode indicator is a powerful tool for analyzing price action and identify
 The Godmode indicator combines multiple technical analysis values, including the RSI, LSMA, and Bollinger Bands (B-Bands), to provide valuable insights into the strength and momentum of price moves.
 
 - If the Green line reaches above the 70 level, while the Blue and Red lines are below the 30 level, it suggests an overextended move that may result in a downward correction.
-
+- If the Blue LSMA remains below the basis (20MA), it is more likely that the body of candles will also remain below the basis (20MA), and vice versa.
+- Downward pressures or upward pressures will persist as long as the White Energy and Green plot remain below or above the level 50.
+- When the Red line approaches the Blue line from above, it can indicate a bearish signal or a downward move, and this continues until the White Energy stops decreasing, and vice versa.
 - Cautionary signals for potential reversals or corrections are indicated by circles with different colors, representing overbought and oversold zones.
 
 Remember, the Godmode indicator is a valuable tool, but it's essential to consider other factors and conduct thorough analysis when making trading decisions.
