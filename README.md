@@ -56,16 +56,6 @@ Remember, the Godmode indicator is a valuable tool, but it's essential to consid
 - `MF Length`: The length used for the calculation of the Money Flow (MF). Money Flow is a volume-based indicator that measures the strength and direction of money flowing in and out of a security.
 - `Godmode SMA Length`: The length used for the calculation of the Godmode Simple Moving Average (SMA). The Godmode SMA is an average of various technical analysis values, including TCI, CSI, MF, and Willy.
 
-## Data Sources
-
-The indicator uses data from multiple exchange sources to perform its calculations. The supported sources include:
-
-- KRAKEN:BTCUSDT
-- BITSTAMP:BTCUSD
-- BINANCE:BTCUSD
-- HUOBI:BTCUSDT
-- OKX:BTCUSDT
-- COINBASE:BTCUSDT
 
 ## Formula & Calculations
 
