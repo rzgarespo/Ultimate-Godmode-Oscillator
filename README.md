@@ -5,7 +5,8 @@ Added the ability to change the color of the candles based on volume thresholds.
 - Gree candles: Average Volume
 - Blue candles: Low volume
 
- 
+![Volume Colors](https://raw.githubusercontent.com/rzgarespo/Ultimate-Godmode-Oscillator/main/volume_colors.png)
+
 # Ultimate GodMode Oscillator
 
 ![App Screenshot](https://github.com/rzgarespo/Ultimate-Godmode-Oscillator/blob/main/GodMode-BTC_2023-05-21_16-20-11.png)
