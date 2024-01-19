@@ -2,7 +2,7 @@
 // Drop a line if you use or modify this code.
 //modified by sco77m4r7in and oh92 -- updated and fixed multi exchange error, and added addtional caution dots. 
 // modified by scilentor, integrated LSMA indicator with settings 25, 0
-///modified by Rzgar Espo - Converted from Pine v3 to Pine v5. Replaced rsi() with 100.0 - (100.0 / (1.0 + A/B). Removed BTC Multi-Exchange so godmode calculation can be used for any security.Add bar colors based on LSMA level.Added 4hline. Added option to hide pressure circles. Changed LSMA length to 32 (Trend detector length for Bollinger Bands with 4 StdDev 20 or 27 MA basis)
+///modified by Rzgar Espo - added volume thresholds - Converted from Pine v3 to Pine v5. Replaced rsi() with 100.0 - (100.0 / (1.0 + A/B). Removed BTC Multi-Exchange so godmode calculation can be used for any security.Add bar colors based on LSMA level.Added 4hline. Added option to hide pressure circles. Changed LSMA length to 32 (Trend detector length for Bollinger Bands with 4 StdDev 20 or 27 MA basis)
 
 //@version=5
 indicator(title="GodMode Oscillator", shorttitle="GM LSMA RSI", precision=2, timeframe="", timeframe_gaps=true)
@@ -14,7 +14,8 @@ n1 = input.int(15, "TCI Channel Length")
 n2 = input.int(9, "Willy Average Length")
 n3 = input.int(3, "MF length")
 n4 = input.int(6, "Godmode SMA length", tooltip="Red SMA Plot")
-lsmaBcOn = input.bool(true, title="Bar Colors", tooltip="Show/Hide LSMA level bar colors")
+lsmaBcOn = input.bool(false, title="Bar Colors", tooltip="Show/Hide LSMA level bar colors")
+volumeBcOn = input.bool(true, title="Volume Colors", tooltip="Show/Hide volume bar colors")
 pressOn = input.bool(true, title="Overbought & Oversold dots", tooltip="Show/Hide caution, Alert, Warning circles")
 enableTradition = input.bool(false, "Enable Tradition Calculation")
 
@@ -33,7 +34,16 @@ lsma = ta.linreg(wt1, length,0)
 
 // Color change condition
 //barColor = lsma > 50 ? color.green : color.orange
-barColor = lsma > 55 and lsma < 85 ? color.green :  lsma > 85 and lsma < 120 ? color.orange : lsma < 50 and lsma > 23 ? color.rgb(247, 133, 133) : lsma < 23 ? color.red : color.blue
+lsmaBarColors = lsma > 55 and lsma < 85 ? color.green :  lsma > 85 and lsma < 120 ? color.orange : lsma < 50 and lsma > 23 ? color.rgb(247, 133, 133) : lsma < 23 ? color.red : color.blue
+
+// Volume thresholds
+ultraHighVolume = 3* ta.sma(volume, 20)
+highVolume = 1.5 * ta.sma(volume, 20)
+averageVolume = ta.sma(volume, 20)
+lowVolume = 0.5 * ta.sma(volume, 20)
+
+// Bar colors based on volume levels
+volumeBarColors = (volume >= ultraHighVolume ? color.red : volume >= highVolume ? color.yellow : volume >= averageVolume ? color.green : color.blue)
 
 // Blue, Red, Green, Gray, Pressure Plots
 plot(lsma, "LSMA", color=color.blue, linewidth=3)
@@ -55,4 +65,5 @@ fillH0 = hline(0, "level 0", color=color.red, linestyle=hline.style_solid)
 fill(fillH0, fillH1, color=color.new(color.gray, 85), title="Background Fill")
 
 // Set bar color based on LSMA value
-barcolor(lsmaBcOn ? barColor: na, title = "LSMA Bar Color")
+barcolor(lsmaBcOn ? lsmaBarColors: na, title = "LSMA Colors")
+barcolor(volumeBcOn ? volumeBarColors: na, title = "Volume Colors")
