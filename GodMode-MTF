@@ -1,0 +1,193 @@
+// @authors LazyBear, xSilas, Ni6HTH4wK,sco77m4r7in, oh92,
+// Drop a line if you use or modify this code.
+//modified by sco77m4r7in and oh92 -- updated and fixed multi exchange error, and added addtional caution dots. 
+// modified by scilentor, integrated LSMA indicator with settings 25, 0
+///modified by Rzgar Espo - added MTF table (adavizion), added volume thresholds - Converted from Pine v3 to Pine v5. Replaced rsi() with 100.0 - (100.0 / (1.0 + A/B). Removed BTC Multi-Exchange so godmode calculation can be used for any security.Add bar colors based on LSMA level.Added 4hline. Added option to hide pressure circles. Changed LSMA length to 32 (Trend detector length for Bollinger Bands with 4 StdDev 20 or 27 MA basis)
+//@version=5
+indicator(title="GodMode Oscillator", shorttitle="UG LSMA RSI", precision=2)
+
+// Length Settings
+src = input(close, "Source")
+length = input.int(32, title="LSMA Length", minval=5, maxval=500)
+n1 = input.int(15, "TCI Channel Length")
+n2 = input.int(9, "Willy Average Length")
+n3 = input.int(3, "MF length")
+n4 = input.int(6, "Godmode SMA length", tooltip="Red SMA Plot")
+
+lsmaBcOn = input.bool(false, title="Bar Colors", tooltip="Show/Hide LSMA level bar colors")
+volumeBcOn = input.bool(true, title="Volume Colors", tooltip="Show/Hide volume bar colors")
+pressOn = input.bool(true, title="Overbought & Oversold dots", tooltip="Show/Hide caution, Alert, Warning circles")
+enableTradition = input.bool(false, "Enable Tradition Calculation")
+showTable = input.bool(false, "Show MTF Table", group="MTF Table Settings", tooltip="Show/Hide Multie timeframe table")
+
+TMF1 = input.timeframe(title='TMF1', defval='15')
+TMF2 = input.timeframe(title='TMF 2', defval='30')
+TMF3 = input.timeframe(title='TMF 3', defval='60')
+TMF4 = input.timeframe(title='TMF 4', defval='180')
+TMF5 = input.timeframe(title='TMF 5', defval='240')
+TMF6 = input.timeframe(title='TMF 6', defval='480')
+TMF7 = input.timeframe(title='TMF 7', defval='720')
+TMF8 = input.timeframe(title='TMF 8', defval='1D')
+TMF9 = input.timeframe(title="TMF 9", defval="3D")
+TMF10 = input.timeframe(title='TMF 10', defval='1W')
+// Formulas & Calculations
+tci(src) => ta.ema((src - ta.ema(src, n1)) / (0.025 * ta.ema(math.abs(src - ta.ema(src, n1)), n1)), n2) + 50
+mf(src) =>  100.0 - (100.0 / (1.0 + math.sum(volume * (ta.change(src) <= 0 ? 0 : src), n3) / math.sum(volume * (ta.change(src) >= 0 ? 0 : src), n3)))
+willy(src) => 60 * (src - ta.highest(src, n2)) / (ta.highest(src, n2) - ta.lowest(src, n2)) + 80
+csi(src) => math.avg(ta.rsi(src, n3), ta.tsi(src, n1, n2) * 100)
+
+godmode(src) => math.avg(tci(src), csi(src), mf(src), willy(src))
+tradition(src) => math.avg(tci(src), mf(src), ta.rsi(src, n3))
+
+wt1 = enableTradition ? tradition(src) : godmode(src)
+wt2 = ta.sma(wt1, n4)
+lsma = ta.linreg(wt1, length,0)
+volumeStrength = (ta.ema((wt1 - wt2) * 2 + 50, n3))
+
+// Color change condition
+lsmaBarColors = lsma > 55 and lsma < 85 ? color.green :  lsma > 85 and lsma < 120 ? color.orange : lsma < 50 and lsma > 23 ? color.rgb(247, 133, 133) : lsma < 23 ? color.red : color.blue
+
+// Volume thresholds
+ultraHighVolume = 3* ta.sma(volume, 20)
+highVolume = 1.5 * ta.sma(volume, 20)
+averageVolume = ta.sma(volume, 20)
+lowVolume = 0.5 * ta.sma(volume, 20)
+
+// Bar colors based on volume levels
+volumeBarColors = (volume >= ultraHighVolume ? color.red : volume >= highVolume ? color.yellow : volume >= averageVolume ? color.green : color.blue)
+
+// Blue, Red, Green, Gray, Volume strength Plots
+plot(lsma, "LSMA", color=color.blue, linewidth=3)
+plot(wt2, "Red SMA", color=color.rgb(242, 54, 69, 0), linewidth=2)
+plot(wt1, "Fast line", color=color.green, linewidth=1)
+plot(volumeStrength, "Volume Strength", color=color.rgb(178, 181, 190, 69), style=plot.style_area, histbase=50)
+plot(pressOn ? wt2 < 25 ? wt2 + 5 : wt2 > 75 ? wt2 - 5 : na : na, title="Caution", color=color.aqua, style=plot.style_circles, linewidth=2)
+plot(pressOn ? wt2 < 20 ? wt2 + 5 : wt2 > 80 ? wt2 - 5 : na : na, title="Alert", color=color.yellow, style=plot.style_circles, linewidth=2)
+plot(pressOn ? wt2 < 15 ? wt2 + 5 : wt2 > 85 ? wt2 - 5 : na : na, title="Warning", color=color.red, style=plot.style_circles, linewidth=3)
+
+// Line with fib values (pleasing to the eyes)
+fillH1 = hline(100, "level 100", color=color.red, linestyle=hline.style_solid)
+hline(78.6, "level 80", color=color.orange, linestyle=hline.style_dashed)
+hline(61.8, "level 60", color=color.gray, linestyle=hline.style_dashed)
+hline(50, "Base line", color=color.blue, linestyle=hline.style_solid)
+hline(38.2, "level 40", color=color.gray, linestyle=hline.style_dashed)
+hline(23.6, "level 20", color=color.orange, linestyle=hline.style_dashed)
+fillH0 = hline(0, "level 0", color=color.red, linestyle=hline.style_solid)
+fill(fillH0, fillH1, color=color.new(color.gray, 85), title="Background Fill")
+
+// Set bar color based on LSMA value
+barcolor(lsmaBcOn ? lsmaBarColors: na, title = "LSMA Colors")
+barcolor(volumeBcOn ? volumeBarColors: na, title = "Volume Colors")
+
+//Multie Timeframe Table
+
+    //volumeStrength 
+
+vsTMF1= request.security(syminfo.tickerid, TMF1, volumeStrength )
+vsTMF2 = request.security(syminfo.tickerid, TMF2, volumeStrength )
+vsTMF3 = request.security(syminfo.tickerid, TMF3, volumeStrength )
+vsTMF4 = request.security(syminfo.tickerid, TMF4, volumeStrength )
+vsTMF5 = request.security(syminfo.tickerid, TMF5, volumeStrength )
+vsTMF6 = request.security(syminfo.tickerid, TMF6, volumeStrength )
+vsTMF7 = request.security(syminfo.tickerid, TMF7, volumeStrength )
+vsTMF8 = request.security(syminfo.tickerid, TMF8, volumeStrength )
+vsTMF9 = request.security(syminfo.tickerid, TMF9, volumeStrength )
+vsTMF10 = request.security(syminfo.tickerid, TMF10, volumeStrength )
+
+    // Green Line
+
+gTMF1 = request.security(syminfo.tickerid, TMF1, wt1)
+gTMF2 = request.security(syminfo.tickerid, TMF2, wt1)
+gTMF3 = request.security(syminfo.tickerid, TMF3, wt1)
+gTMF4 = request.security(syminfo.tickerid, TMF4, wt1)
+gTMF5 = request.security(syminfo.tickerid, TMF5, wt1)
+gTMF6 = request.security(syminfo.tickerid, TMF6, wt1)
+gTMF7 = request.security(syminfo.tickerid, TMF7, wt1)
+gTMF8 = request.security(syminfo.tickerid, TMF8, wt1)
+gTMF9 = request.security(syminfo.tickerid, TMF9, wt1)
+gTMF10 = request.security(syminfo.tickerid, TMF10, wt1)
+
+    //Red Line
+
+rTMF1 = request.security(syminfo.tickerid, TMF1, wt2)
+rTMF2 = request.security(syminfo.tickerid, TMF2, wt2)
+rTMF3 = request.security(syminfo.tickerid, TMF3, wt2)
+rTMF4 = request.security(syminfo.tickerid, TMF4, wt2)
+rTMF5 = request.security(syminfo.tickerid, TMF5, wt2)
+rTMF6 = request.security(syminfo.tickerid, TMF6, wt2)
+rTMF7 = request.security(syminfo.tickerid, TMF7, wt2)
+rTMF8 = request.security(syminfo.tickerid, TMF8, wt2)
+rTMF9 = request.security(syminfo.tickerid, TMF9, wt2)
+rTMF10 = request.security(syminfo.tickerid, TMF10, wt2)
+
+    // Blue LSMA
+
+bTMF1 = request.security(syminfo.tickerid, TMF1, lsma)
+bTMF2 = request.security(syminfo.tickerid, TMF2, lsma)
+bTMF3 = request.security(syminfo.tickerid, TMF3, lsma)
+bTMF4 = request.security(syminfo.tickerid, TMF4, lsma)
+bTMF5 = request.security(syminfo.tickerid, TMF5, lsma)
+bTMF6 = request.security(syminfo.tickerid, TMF6, lsma)
+bTMF7 = request.security(syminfo.tickerid, TMF7, lsma)
+bTMF8 = request.security(syminfo.tickerid, TMF8, lsma)
+bTMF9 = request.security(syminfo.tickerid, TMF9, lsma)
+bTMF10 = request.security(syminfo.tickerid, TMF10, lsma)
+
+
+var tbl = table.new(position.bottom_right, 11, 9, border_width=1)
+if showTable and barstate.isrealtime
+
+    table.cell(tbl, 0, 0, "TF",  bgcolor =#333333, text_color=color.white, text_size = size.small)
+    table.cell(tbl, 1, 0, TMF1,  bgcolor =#333333, text_color=color.white, text_size = size.small)
+    table.cell(tbl, 2, 0, TMF2,  bgcolor =#333333, text_color=color.white, text_size = size.small)
+    table.cell(tbl, 3, 0, TMF3,  bgcolor =#333333, text_color=color.white, text_size = size.small)
+    table.cell(tbl, 4, 0, TMF4,  bgcolor =#333333, text_color=color.white, text_size = size.small)
+    table.cell(tbl, 5, 0, TMF5,  bgcolor =#333333, text_color=color.white, text_size = size.small)
+    table.cell(tbl, 6, 0, TMF7,  bgcolor =#333333, text_color=color.white, text_size = size.small)
+    table.cell(tbl, 7, 0, TMF8,  bgcolor =#333333, text_color=color.white, text_size = size.small)
+    table.cell(tbl, 8, 0, TMF9,  bgcolor =#333333, text_color=color.white, text_size = size.small)
+    table.cell(tbl, 9, 0, TMF10,  bgcolor =#333333, text_color=color.white, text_size = size.small)
+
+    table.cell(tbl, 0, 1, "White", bgcolor =#333333, text_color=color.white, text_size = size.small)
+    table.cell(tbl, 1, 1, text= str.tostring(int(vsTMF1)), bgcolor =(vsTMF1>50 and vsTMF1<70 ? color.new(color.green, 70) : vsTMF1>70 and vsTMF1< 80 ? color.new(color.green, 40) : vsTMF1>80 ? color.green : vsTMF1<20 ? color.red : vsTMF1> 20 and vsTMF1<30 ? color.new(color.red, 50) : vsTMF1> 30 and vsTMF1< 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)    
+    table.cell(tbl, 2, 1, text= str.tostring(int(vsTMF2)), bgcolor =(vsTMF2>50 and vsTMF2<70 ? color.new(color.green, 70) : vsTMF2>70 and vsTMF2 < 80 ? color.new(color.green, 40) : vsTMF2>80 ? color.green : vsTMF2<20 ? color.red : vsTMF2 > 20 and vsTMF2 <30 ? color.new(color.red, 50) : vsTMF2 > 30 and vsTMF2 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 3, 1, text= str.tostring(int(vsTMF3)), bgcolor =(vsTMF3>50 and vsTMF3<70 ? color.new(color.green, 70) : vsTMF3>70 and vsTMF3 < 80 ? color.new(color.green, 40) : vsTMF3>80 ? color.green : vsTMF3<20 ? color.red : vsTMF3 > 20 and vsTMF3 <30 ? color.new(color.red, 50) : vsTMF3 > 30 and vsTMF3 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 4, 1, text= str.tostring(int(vsTMF4)), bgcolor =(vsTMF4>50 and vsTMF4<70 ? color.new(color.green, 70) : vsTMF4>70 and vsTMF4 < 80 ? color.new(color.green, 40) : vsTMF4>80 ? color.green : vsTMF4<20 ? color.red : vsTMF4 > 20 and vsTMF4 <30 ? color.new(color.red, 50) : vsTMF4 > 30 and vsTMF4 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 5, 1, text= str.tostring(int(vsTMF5)), bgcolor =(vsTMF5>50 and vsTMF5<70 ? color.new(color.green, 70) : vsTMF5>70 and vsTMF5 < 80 ? color.new(color.green, 40) : vsTMF5>80 ? color.green : vsTMF5<20 ? color.red : vsTMF5 > 20 and vsTMF5 <30 ? color.new(color.red, 50) : vsTMF5 > 30 and vsTMF5 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 6, 1, text= str.tostring(int(vsTMF7)), bgcolor =(vsTMF7>50 and vsTMF7<70 ? color.new(color.green, 70) : vsTMF7>70 and vsTMF7 < 80 ? color.new(color.green, 40) : vsTMF7>80 ? color.green : vsTMF7<20 ? color.red : vsTMF7 > 20 and vsTMF7 <30 ? color.new(color.red, 50) : vsTMF7 > 30 and vsTMF7 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 7, 1, text= str.tostring(int(vsTMF8)), bgcolor =(vsTMF8>50 and vsTMF8<70 ? color.new(color.green, 70) : vsTMF8>70 and vsTMF8 < 80 ? color.new(color.green, 40) : vsTMF8>80 ? color.green : vsTMF8<20 ? color.red : vsTMF8 > 20 and vsTMF8 <30 ? color.new(color.red, 50) : vsTMF8 > 30 and vsTMF8 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 8, 1, text= str.tostring(int(vsTMF9)), bgcolor =(vsTMF9>50 and vsTMF9<70 ? color.new(color.green, 70) : vsTMF9>70 and vsTMF9 < 80 ? color.new(color.green, 40) : vsTMF9>80 ? color.green : vsTMF9<20 ? color.red : vsTMF9 > 20 and vsTMF9 <30 ? color.new(color.red, 50) : vsTMF9 > 30 and vsTMF9 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 9, 1, text= str.tostring(int(vsTMF10)), bgcolor =(vsTMF10>50 and vsTMF10<70 ? color.new(color.green, 70) : vsTMF10>70 and vsTMF10 < 80 ? color.new(color.green, 40) : vsTMF10>80 ? color.green : vsTMF10<20 ? color.red : vsTMF10 > 20 and vsTMF10 <30 ? color.new(color.red, 50) : vsTMF10 > 30 and vsTMF10 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    
+    table.cell(tbl, 0, 2, "Green",  bgcolor =#333333, text_color=color.green, text_size = size.small)
+    table.cell(tbl, 1, 2, text= str.tostring(int(gTMF1)), bgcolor =(gTMF1>50 and gTMF1<70 ? color.new(color.green, 70) : gTMF1>70 and gTMF1 < 80 ? color.new(color.green, 40) : gTMF1>80 ? color.green : gTMF1<20 ? color.red : gTMF1 > 20 and gTMF1 <30 ? color.new(color.red, 50) : gTMF1 > 30 and gTMF1 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 2, 2, text= str.tostring(int(gTMF2)), bgcolor =(gTMF2>50 and gTMF2<70 ? color.new(color.green, 70) : gTMF2>70 and gTMF2 < 80 ? color.new(color.green, 40) : gTMF2>80 ? color.green : gTMF2<20 ? color.red : gTMF2 > 20 and gTMF2 <30 ? color.new(color.red, 50) : gTMF2 > 30 and gTMF2 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 3, 2, text= str.tostring(int(gTMF3)), bgcolor =(gTMF3>50 and gTMF3<70 ? color.new(color.green, 70) : gTMF3>70 and gTMF3 < 80 ? color.new(color.green, 40) : gTMF3>80 ? color.green : gTMF3<20 ? color.red : gTMF3 > 20 and gTMF3 <30 ? color.new(color.red, 50) : gTMF3 > 30 and gTMF3 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 4, 2, text= str.tostring(int(gTMF4)), bgcolor =(gTMF4>50 and gTMF4<70 ? color.new(color.green, 70) : gTMF4>70 and gTMF4 < 80 ? color.new(color.green, 40) : gTMF4>80 ? color.green : gTMF4<20 ? color.red : gTMF4 > 20 and gTMF4 <30 ? color.new(color.red, 50) : gTMF4 > 30 and gTMF4 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 5, 2, text= str.tostring(int(gTMF5)), bgcolor =(gTMF5>50 and gTMF5<70 ? color.new(color.green, 70) : gTMF5>70 and gTMF5 < 80 ? color.new(color.green, 40) : gTMF5>80 ? color.green : gTMF5<20 ? color.red : gTMF5 > 20 and gTMF5 <30 ? color.new(color.red, 50) : gTMF5 > 30 and gTMF5 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 6, 2, text= str.tostring(int(gTMF7)), bgcolor =(gTMF7>50 and gTMF7<70 ? color.new(color.green, 70) : gTMF7>70 and gTMF7 < 80 ? color.new(color.green, 40) : gTMF7>80 ? color.green : gTMF7<20 ? color.red : gTMF7 > 20 and gTMF7 <30 ? color.new(color.red, 50) : gTMF7 > 30 and gTMF7 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 7, 2, text= str.tostring(int(gTMF8)), bgcolor =(gTMF8>50 and gTMF8<70 ? color.new(color.green, 70) : gTMF8>70 and gTMF8 < 80 ? color.new(color.green, 40) : gTMF8>80 ? color.green : gTMF8<20 ? color.red : gTMF8 > 20 and gTMF8 <30 ? color.new(color.red, 50) : gTMF8 > 30 and gTMF8 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 8, 2, text= str.tostring(int(gTMF9)), bgcolor =(gTMF9>50 and gTMF9<70 ? color.new(color.green, 70) : gTMF9>70 and gTMF9 < 80 ? color.new(color.green, 40) : gTMF9>80 ? color.green : gTMF9<20 ? color.red : gTMF9 > 20 and gTMF9 <30 ? color.new(color.red, 50) : gTMF9 > 30 and gTMF9 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 9, 2, text= str.tostring(int(gTMF10)), bgcolor =(gTMF10>50 and gTMF10<70 ? color.new(color.green, 70) : gTMF10>70 and gTMF10 < 80 ? color.new(color.green, 40) : gTMF10>80 ? color.green : gTMF10<20 ? color.red : gTMF10 > 20 and gTMF10 <30 ? color.new(color.red, 50) : gTMF10 > 30 and gTMF10 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    
+    table.cell(tbl, 0, 3, "Red", bgcolor =#333333, text_color=color.red, text_size = size.small) 
+    table.cell(tbl, 1, 3, text= str.tostring(int(rTMF1)), bgcolor =(rTMF1>50 and rTMF1<70 ? color.new(color.green, 70) : rTMF1>70 and rTMF1 < 80 ? color.new(color.green, 40) : rTMF1>80 ? color.green : rTMF1<20 ? color.red : rTMF1 > 20 and rTMF1 <30 ? color.new(color.red, 50) : rTMF1 > 30 and rTMF1 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 2, 3, text= str.tostring(int(rTMF2)), bgcolor =(rTMF2>50 and rTMF2<70 ? color.new(color.green, 70) : rTMF2>70 and rTMF2 < 80 ? color.new(color.green, 40) : rTMF2>80 ? color.green : rTMF2<20 ? color.red : rTMF2 > 20 and rTMF2 <30 ? color.new(color.red, 50) : rTMF2 > 30 and rTMF2 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 3, 3, text= str.tostring(int(rTMF3)), bgcolor =(rTMF3>50 and rTMF3<70 ? color.new(color.green, 70) : rTMF3>70 and rTMF3 < 80 ? color.new(color.green, 40) : rTMF3>80 ? color.green : rTMF3<20 ? color.red : rTMF3 > 20 and rTMF3 <30 ? color.new(color.red, 50) : rTMF3 > 30 and rTMF3 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 4, 3, text= str.tostring(int(rTMF4)), bgcolor =(rTMF4>50 and rTMF4<70 ? color.new(color.green, 70) : rTMF4>70 and rTMF4 < 80 ? color.new(color.green, 40) : rTMF4>80 ? color.green : rTMF4<20 ? color.red : rTMF4 > 20 and rTMF4 <30 ? color.new(color.red, 50) : rTMF4 > 30 and rTMF4 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 5, 3, text= str.tostring(int(rTMF5)), bgcolor =(rTMF5>50 and rTMF5<70 ? color.new(color.green, 70) : rTMF5>70 and rTMF5 < 80 ? color.new(color.green, 40) : rTMF5>80 ? color.green : rTMF5<20 ? color.red : rTMF5 > 20 and rTMF5 <30 ? color.new(color.red, 50) : rTMF5 > 30 and rTMF5 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 6, 3, text= str.tostring(int(rTMF7)), bgcolor =(rTMF7>50 and rTMF7<70 ? color.new(color.green, 70) : rTMF7>70 and rTMF7 < 80 ? color.new(color.green, 40) : rTMF7>80 ? color.green : rTMF7<20 ? color.red : rTMF7 > 20 and rTMF7 <30 ? color.new(color.red, 50) : rTMF7 > 30 and rTMF7 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 7, 3, text= str.tostring(int(rTMF8)), bgcolor =(rTMF8>50 and rTMF8<70 ? color.new(color.green, 70) : rTMF8>70 and rTMF8 < 80 ? color.new(color.green, 40) : rTMF8>80 ? color.green : rTMF8<20 ? color.red : rTMF8 > 20 and rTMF8 <30 ? color.new(color.red, 50) : rTMF8 > 30 and rTMF8 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 8, 3, text= str.tostring(int(rTMF9)), bgcolor =(rTMF9>50 and rTMF9<70 ? color.new(color.green, 70) : rTMF9>70 and rTMF9 < 80 ? color.new(color.green, 40) : rTMF9>80 ? color.green : rTMF9<20 ? color.red : rTMF9 > 20 and rTMF9 <30 ? color.new(color.red, 50) : rTMF9 > 30 and rTMF9 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 9, 3, text= str.tostring(int(rTMF10)), bgcolor =(rTMF10>50 and rTMF10<70 ? color.new(color.green, 70) : rTMF10>70 and rTMF10 < 80 ? color.new(color.green, 40) : rTMF10>80 ? color.green : rTMF10<20 ? color.red : rTMF10 > 20 and rTMF10 <30 ? color.new(color.red, 50) : rTMF10 > 30 and rTMF10 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    
+    table.cell(tbl, 0, 4, "Blue", bgcolor =#333333, text_color=color.blue, text_size = size.small)
+    table.cell(tbl, 1, 4, text= str.tostring(int(bTMF1)), bgcolor =(bTMF1>50 and bTMF1<70 ? color.new(color.green, 70) : bTMF1>70 and bTMF1 < 80 ? color.new(color.green, 40) : bTMF1>80 ? color.green : bTMF1<20 ? color.red : bTMF1 > 20 and bTMF1 <30 ? color.new(color.red, 50) : bTMF1 > 30 and bTMF1 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 2, 4, text= str.tostring(int(bTMF2)), bgcolor =(bTMF2>50 and bTMF2<70 ? color.new(color.green, 70) : bTMF2>70 and bTMF2 < 80 ? color.new(color.green, 40) : bTMF2>80 ? color.green : bTMF2<20 ? color.red : bTMF2 > 20 and bTMF2 <30 ? color.new(color.red, 50) : bTMF2 > 30 and bTMF2 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 3, 4, text= str.tostring(int(bTMF3)), bgcolor =(bTMF3>50 and bTMF3<70 ? color.new(color.green, 70) : bTMF3>70 and bTMF3 < 80 ? color.new(color.green, 40) : bTMF3>80 ? color.green : bTMF3<20 ? color.red : bTMF3 > 20 and bTMF3 <30 ? color.new(color.red, 50) : bTMF3 > 30 and bTMF3 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 4, 4, text= str.tostring(int(bTMF4)), bgcolor =(bTMF4>50 and bTMF4<70 ? color.new(color.green, 70) : bTMF4>70 and bTMF4 < 80 ? color.new(color.green, 40) : bTMF4>80 ? color.green : bTMF4<20 ? color.red : bTMF4 > 20 and bTMF4 <30 ? color.new(color.red, 50) : bTMF4 > 30 and bTMF4 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 5, 4, text= str.tostring(int(bTMF5)), bgcolor =(bTMF5>50 and bTMF5<70 ? color.new(color.green, 70) : bTMF5>70 and bTMF5 < 80 ? color.new(color.green, 40) : bTMF5>80 ? color.green : bTMF5<20 ? color.red : bTMF5 > 20 and bTMF5 <30 ? color.new(color.red, 50) : bTMF5 > 30 and bTMF5 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 6, 4, text= str.tostring(int(bTMF7)), bgcolor =(bTMF7>50 and bTMF7<70 ? color.new(color.green, 70) : bTMF7>70 and bTMF7 < 80 ? color.new(color.green, 40) : bTMF7>80 ? color.green : bTMF7<20 ? color.red : bTMF7 > 20 and bTMF7 <30 ? color.new(color.red, 50) : bTMF7 > 30 and bTMF7 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 7, 4, text= str.tostring(int(bTMF8)), bgcolor =(bTMF8>50 and bTMF8<70 ? color.new(color.green, 70) : bTMF8>70 and bTMF8 < 80 ? color.new(color.green, 40) : bTMF8>80 ? color.green : bTMF8<20 ? color.red : bTMF8 > 20 and bTMF8 <30 ? color.new(color.red, 50) : bTMF8 > 30 and bTMF8 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
+    table.cell(tbl, 8, 4, text= str.tostring(int(bTMF9)), bgcolor =(bTMF9>50 and bTMF9<70 ? color.new(color.green, 70) : bTMF9>70 and bTMF9 < 80 ? color.new(color.green, 40) : bTMF9>80 ? color.green : bTMF9<20 ? color.red : bTMF9 > 20 and bTMF9 <30 ? color.new(color.red, 50) : bTMF9 > 30 and bTMF9 < 50 ? color.new(color.red, 70) : color.gray), text_color=  color.white, text_size = size.small)
+    table.cell(tbl, 9, 4, text= str.tostring(int(bTMF10)), bgcolor =(bTMF10>50 and bTMF10<70 ? color.new(color.green, 70) : bTMF10>70 and bTMF10 < 80 ? color.new(color.green, 40) : bTMF10>80 ? color.green : bTMF10<20 ? color.red : bTMF10 > 20 and bTMF10 <30 ? color.new(color.red, 50) : bTMF10 > 30 and bTMF10 < 50 ? color.new(color.red, 70) : color.gray), text_color= color.white, text_size = size.small)
